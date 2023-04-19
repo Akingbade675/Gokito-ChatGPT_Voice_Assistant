@@ -1,0 +1,6 @@
+package tech.devbhobo.gokito.gokito
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity: FlutterActivity() {
+}
