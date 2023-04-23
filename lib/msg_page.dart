@@ -45,7 +45,14 @@ class _MessagePageState extends State<MessagePage> {
                     return const SingleChildScrollView(child: FeaturesBox());
                   } else if (state.status == ChatStatus.loading ||
                       state.status == ChatStatus.success) {
+                    ScrollController scrollController = ScrollController();
+                    if (scrollController.hasClients) {
+                      final position =
+                          scrollController.position.maxScrollExtent;
+                      scrollController.jumpTo(position);
+                    }
                     return ListView.builder(
+                      controller: scrollController,
                       itemCount: state.messages.length,
                       itemBuilder: (context, index) {
                         return ChatItem(

@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gokito/bloc/chat_bloc.dart';
+import 'package:speech_to_text/speech_to_text.dart';
+
+enum InputType {
+  text,
+  voice,
+}
 
 class CustomTextField extends StatefulWidget {
   // final BuildContext context;
@@ -15,11 +21,40 @@ class CustomTextField extends StatefulWidget {
 
 class _CustomTextFieldState extends State<CustomTextField> {
   final TextEditingController controller = TextEditingController();
+  final SpeechToText speechToText = SpeechToText();
+  InputType inputType = InputType.voice;
+  bool speechEnabled = false;
+  String lastWords = '';
 
   @override
   void dispose() {
     controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initSpeech();
+  }
+
+  void _initSpeech() async {
+    speechEnabled = await speechToText.initialize();
+    setState(() {});
+  }
+
+  void startListening() async {
+    await speechToText.listen(
+      onResult: (result) {
+        lastWords = result.recognizedWords;
+      },
+    );
+    setState(() {});
+  }
+
+  void stopListening() async {
+    await speechToText.stop();
+    setState(() {});
   }
 
   @override
@@ -51,7 +86,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 fillColor: Colors.white,
               ),
               onChanged: (value) {
-                value.isNotEmpty ? null : null;
+                value.isNotEmpty
+                    ? inputType = InputType.text
+                    : inputType = InputType.voice;
+                setState(() {});
               },
             ),
           ),
@@ -60,9 +98,22 @@ class _CustomTextFieldState extends State<CustomTextField> {
           width: 8,
         ),
         IconButton.filled(
-          onPressed: () {
-            context.read<ChatBloc>().add(SendMsg(message: controller.text));
-            controller.clear();
+          onPressed: () async {
+            if (inputType == InputType.text) {
+              context.read<ChatBloc>().add(SendMsg(message: controller.text));
+              controller.clear();
+            } else {
+              if (await speechToText.hasPermission && speechEnabled) {
+                if (speechToText.isListening) {
+                  stopListening();
+                  context.read<ChatBloc>().add(SendMsg(message: lastWords));
+                } else {
+                  startListening();
+                }
+              } else {
+                _initSpeech();
+              }
+            }
           },
           highlightColor: const Color.fromARGB(255, 54, 177, 185),
           style: ButtonStyle(
@@ -75,7 +126,9 @@ class _CustomTextFieldState extends State<CustomTextField> {
               ),
             ),
           ),
-          icon: const Icon(Icons.send),
+          icon: inputType == InputType.text
+              ? const Icon(Icons.send)
+              : const Icon(Icons.mic),
           padding: const EdgeInsets.all(14),
           splashColor: const Color.fromARGB(137, 54, 176, 185),
           iconSize: 22,
